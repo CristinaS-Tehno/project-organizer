@@ -1,17 +1,12 @@
-"""
-Application configuration
-"""
-from pathlib import Path
-
-# Database configuration
 DATABASE_CONNECTION_STRING = (
     'Driver={ODBC Driver 17 for SQL Server};'
-    'Server=localhost;'
-    'Database=ProjectOrganizer;'
+    'Server=(local);'
     'Trusted_Connection=yes;'
 )
 
 # Folder configuration
+from pathlib import Path
+
 PROJECTS_ROOT_PATH = Path.home() / "Documents" / "Projects"
 
 # Ensure projects root exists
