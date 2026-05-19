@@ -19,7 +19,7 @@ class Database:
         if connection_string is None:
             self.connection_string = (
                 'Driver={ODBC Driver 17 for SQL Server};'
-                'Server=localhost;'
+                'Server=(local);'
                 'Database=ProjectOrganizer;'
                 'Trusted_Connection=yes;'
             )
@@ -33,6 +33,7 @@ class Database:
         """Establish database connection"""
         try:
             self.connection = pyodbc.connect(self.connection_string)
+            self.connection.autocommit = True
             print("Database connection established")
             return True
         except pyodbc.Error as e:
@@ -47,18 +48,6 @@ class Database:
         cursor = self.connection.cursor()
         
         try:
-            # Create database
-            cursor.execute("""
-                IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'ProjectOrganizer')
-                BEGIN
-                    CREATE DATABASE ProjectOrganizer
-                END
-            """)
-            self.connection.commit()
-            
-            # Switch to the database
-            cursor.execute("USE ProjectOrganizer")
-            
             # Create projects table
             cursor.execute("""
                 IF NOT EXISTS (SELECT * FROM information_schema.tables 
@@ -77,7 +66,6 @@ class Database:
                     )
                 END
             """)
-            self.connection.commit()
             print("Database initialized successfully")
             return True
         except pyodbc.Error as e:
@@ -95,13 +83,15 @@ class Database:
         
         try:
             cursor.execute("""
-                USE ProjectOrganizer
                 INSERT INTO Projects (Name, Description, Category, Path, Template, Status, CreatedAt, UpdatedAt)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (name, description, category, path, template, 'active', datetime.now(), datetime.now()))
-            self.connection.commit()
+            
+            # Get the ID of the inserted row
+            cursor.execute("SELECT @@IDENTITY")
+            project_id = cursor.fetchone()[0]
             print(f"Project '{name}' created in database")
-            return cursor.lastrowid
+            return project_id
         except pyodbc.Error as e:
             print(f"Error creating project: {e}")
             return None
@@ -117,7 +107,6 @@ class Database:
         
         try:
             cursor.execute("""
-                USE ProjectOrganizer
                 SELECT ProjectID, Name, Description, Category, Path, Template, Status, CreatedAt, UpdatedAt
                 FROM Projects
                 WHERE Status = 'active'
@@ -140,7 +129,6 @@ class Database:
         
         try:
             cursor.execute("""
-                USE ProjectOrganizer
                 SELECT ProjectID, Name, Description, Category, Path, Template, Status, CreatedAt, UpdatedAt
                 FROM Projects
                 WHERE (Name LIKE ? OR Description LIKE ?) AND Status = 'active'
@@ -163,7 +151,6 @@ class Database:
         
         try:
             cursor.execute("""
-                USE ProjectOrganizer
                 SELECT ProjectID, Name, Description, Category, Path, Template, Status, CreatedAt, UpdatedAt
                 FROM Projects
                 WHERE Category = ? AND Status = 'active'
@@ -206,14 +193,12 @@ class Database:
             params.append(project_id)
             
             query = f"""
-                USE ProjectOrganizer
                 UPDATE Projects
                 SET {', '.join(updates)}
                 WHERE ProjectID = ?
             """
             
             cursor.execute(query, params)
-            self.connection.commit()
             print(f"Project {project_id} updated")
             return True
         except pyodbc.Error as e:
