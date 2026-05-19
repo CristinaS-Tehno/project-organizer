@@ -3,7 +3,7 @@ Create Project dialog
 """
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QComboBox, QPushButton, QTextEdit, QMessageBox
+    QComboBox, QPushButton, QTextEdit, QMessageBox, QFileDialog
 )
 from utils.constants import PROJECT_CATEGORIES
 
@@ -21,12 +21,13 @@ class CreateProjectDialog(QDialog):
         """
         super().__init__(parent)
         self.project_manager = project_manager
+        self.selected_source_folder = None
         self.init_ui()
 
     def init_ui(self):
         """Initialize dialog UI"""
         self.setWindowTitle("Create New Project")
-        self.setGeometry(200, 200, 500, 400)
+        self.setGeometry(200, 200, 600, 500)
         self.setModal(True)
 
         layout = QVBoxLayout()
@@ -43,7 +44,7 @@ class CreateProjectDialog(QDialog):
         layout.addWidget(desc_label)
         self.description_input = QTextEdit()
         self.description_input.setPlaceholderText("Enter project description (optional)...")
-        self.description_input.setMaximumHeight(100)
+        self.description_input.setMaximumHeight(80)
         layout.addWidget(self.description_input)
 
         # Category
@@ -61,6 +62,22 @@ class CreateProjectDialog(QDialog):
         self.template_combo.addItems(templates)
         layout.addWidget(self.template_combo)
 
+        # Source Folder
+        folder_label = QLabel("Copy from Folder (Optional):")
+        layout.addWidget(folder_label)
+        
+        folder_layout = QHBoxLayout()
+        self.folder_input = QLineEdit()
+        self.folder_input.setPlaceholderText("Select a folder to copy from...")
+        self.folder_input.setReadOnly(True)
+        folder_layout.addWidget(self.folder_input)
+        
+        browse_btn = QPushButton("📁 Browse")
+        browse_btn.clicked.connect(self.browse_folder)
+        folder_layout.addWidget(browse_btn)
+        
+        layout.addLayout(folder_layout)
+
         # Buttons
         button_layout = QHBoxLayout()
 
@@ -75,12 +92,24 @@ class CreateProjectDialog(QDialog):
         layout.addLayout(button_layout)
         self.setLayout(layout)
 
+    def browse_folder(self):
+        """Open folder browser dialog"""
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Select Folder to Copy From",
+            ""
+        )
+        if folder:
+            self.selected_source_folder = folder
+            self.folder_input.setText(folder)
+
     def create_project(self):
         """Create the project"""
         name = self.name_input.text().strip()
         description = self.description_input.toPlainText().strip()
         category = self.category_combo.currentText()
         template = self.template_combo.currentText()
+        source_folder = self.selected_source_folder
 
         # Validation
         if not name:
@@ -92,12 +121,15 @@ class CreateProjectDialog(QDialog):
                 name=name,
                 description=description,
                 category=category,
-                template=template
+                template=template,
+                source_folder=source_folder
             )
-            QMessageBox.information(
-                self, "Success",
-                f"Project '{name}' created successfully!"
-            )
+            
+            message = f"Project '{name}' created successfully!"
+            if source_folder:
+                message += f"\n\nFolder contents copied from:\n{source_folder}"
+            
+            QMessageBox.information(self, "Success", message)
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to create project: {str(e)}")

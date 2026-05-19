@@ -2,6 +2,7 @@
 Folder template generator
 """
 from pathlib import Path
+import shutil
 
 
 class FolderTemplate:
@@ -50,6 +51,45 @@ class FolderTemplate:
             return True
         except Exception as e:
             print(f"Error creating folder structure: {e}")
+            return False
+
+    @staticmethod
+    def copy_folder_contents(source_path, destination_path):
+        """
+        Copy all contents from source folder to destination folder
+        
+        Args:
+            source_path: Path to source folder to copy from
+            destination_path: Path to destination folder
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            source_path = Path(source_path)
+            destination_path = Path(destination_path)
+            
+            if not source_path.exists():
+                raise Exception(f"Source folder does not exist: {source_path}")
+            
+            if not source_path.is_dir():
+                raise Exception(f"Source path is not a directory: {source_path}")
+            
+            # Create destination if it doesn't exist
+            destination_path.mkdir(parents=True, exist_ok=True)
+            
+            # Copy all contents
+            for item in source_path.iterdir():
+                dest_item = destination_path / item.name
+                if item.is_dir():
+                    shutil.copytree(item, dest_item, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(item, dest_item)
+            
+            print(f"✅ Copied contents from {source_path} to {destination_path}")
+            return True
+        except Exception as e:
+            print(f"Error copying folder contents: {e}")
             return False
 
     @staticmethod

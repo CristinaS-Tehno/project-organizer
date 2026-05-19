@@ -17,7 +17,7 @@ class ProjectManager:
         self.db = Database()
         self.projects_root = PROJECTS_ROOT_PATH
 
-    def create_new_project(self, name, description, category, template):
+    def create_new_project(self, name, description, category, template, source_folder=None):
         """
         Create a new project
         
@@ -26,6 +26,7 @@ class ProjectManager:
             description: Project description
             category: Project category
             template: Folder template to use
+            source_folder: Optional path to folder to copy from
             
         Returns:
             Project: Created project object or None
@@ -38,8 +39,18 @@ class ProjectManager:
                 raise Exception(f"Project folder already exists: {project_path}")
             
             # Create folders based on template
-            if not FolderTemplate.create_folder_structure(project_path, template):
-                raise Exception("Failed to create folder structure")
+            if template and template != "None":
+                if not FolderTemplate.create_folder_structure(project_path, template):
+                    raise Exception("Failed to create folder structure")
+            else:
+                # Just create the main folder
+                project_path.mkdir(parents=True, exist_ok=True)
+            
+            # Copy folder contents if source folder provided
+            if source_folder and source_folder.strip():
+                source_path = Path(source_folder)
+                if not FolderTemplate.copy_folder_contents(source_path, project_path):
+                    raise Exception("Failed to copy folder contents")
             
             # Save to database
             project_id = self.db.create_project(
@@ -47,7 +58,7 @@ class ProjectManager:
                 description=description,
                 category=category,
                 path=str(project_path),
-                template=template
+                template=template or "Custom"
             )
             
             if project_id is None:
@@ -59,7 +70,7 @@ class ProjectManager:
                 description=description,
                 category=category,
                 path=str(project_path),
-                template=template,
+                template=template or "Custom",
                 status='active',
                 created_at=datetime.now(),
                 updated_at=datetime.now()
@@ -167,7 +178,9 @@ class ProjectManager:
 
     def get_available_templates(self):
         """Get list of available templates"""
-        return FolderTemplate.get_available_templates()
+        templates = FolderTemplate.get_available_templates()
+        templates.append("None")  # Option for no template
+        return templates
 
     def close(self):
         """Close database connection"""
