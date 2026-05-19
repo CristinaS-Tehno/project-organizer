@@ -16,27 +16,41 @@ connection_string = (
 try:
     print("📡 Connecting to SQL Server...")
     conn = pyodbc.connect(connection_string)
+    # Enable autocommit to avoid transaction issues
+    conn.autocommit = True
     cursor = conn.cursor()
     print("✅ Connected to SQL Server!")
     
     # Create database
     print("\n📁 Creating ProjectOrganizer database...")
-    cursor.execute("""
-        IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'ProjectOrganizer')
-        BEGIN
-            CREATE DATABASE ProjectOrganizer
-        END
-    """)
-    conn.commit()
-    print("✅ Database 'ProjectOrganizer' created!")
+    try:
+        cursor.execute("CREATE DATABASE ProjectOrganizer")
+        print("✅ Database 'ProjectOrganizer' created!")
+    except pyodbc.Error as e:
+        if "already exists" in str(e) or "file already exists" in str(e):
+            print("✅ Database 'ProjectOrganizer' already exists!")
+        else:
+            raise
     
-    # Switch to the database
-    print("\n🔀 Switching to ProjectOrganizer database...")
-    cursor.execute("USE ProjectOrganizer")
+    cursor.close()
+    conn.close()
+    
+    # Create new connection to the database
+    print("\n🔄 Connecting to ProjectOrganizer database...")
+    db_connection_string = (
+        'Driver={ODBC Driver 17 for SQL Server};'
+        'Server=(local);'
+        'Database=ProjectOrganizer;'
+        'Trusted_Connection=yes;'
+    )
+    db_conn = pyodbc.connect(db_connection_string)
+    db_conn.autocommit = True
+    db_cursor = db_conn.cursor()
+    print("✅ Connected to ProjectOrganizer database!")
     
     # Create Projects table
-    print("📋 Creating Projects table...")
-    cursor.execute("""
+    print("\n📋 Creating Projects table...")
+    db_cursor.execute("""
         IF NOT EXISTS (SELECT * FROM information_schema.tables 
                       WHERE table_name = 'Projects')
         BEGIN
@@ -53,11 +67,10 @@ try:
             )
         END
     """)
-    conn.commit()
     print("✅ Table 'Projects' created!")
     
-    cursor.close()
-    conn.close()
+    db_cursor.close()
+    db_conn.close()
     
     print("\n" + "="*50)
     print("✅ DATABASE SETUP COMPLETED SUCCESSFULLY!")
